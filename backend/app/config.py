@@ -46,6 +46,10 @@ class Settings(BaseSettings):
 
     confidence_threshold: float = 0.6
 
+    imagegen_provider: str = "openai"
+    openai_image_model: str = "gpt-image-1"
+    pattern_data_dir: str = "data"
+
 
 @lru_cache
 def get_settings() -> Settings:

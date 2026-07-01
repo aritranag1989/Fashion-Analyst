@@ -34,6 +34,8 @@ dependencies = [
     "tenacity>=9.0.0",
     "structlog>=24.4.0",
     "python-multipart>=0.0.12",
+    "pillow>=11.0.0",
+    "numpy>=1.26.0",
 ]
 
 [dependency-groups]
@@ -53,6 +55,12 @@ target-version = "py311"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+# db/postgres/base.py creates its async engine/connection pool once at import time, bound to
+# whichever event loop is active then - function-scoped test loops (pytest-asyncio's default)
+# would create a new loop per test and break that pool. Session scope matches the app's actual
+# single-global-engine design.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 
 [build-system]
 requires = ["hatchling"]

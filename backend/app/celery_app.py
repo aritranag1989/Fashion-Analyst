@@ -9,7 +9,7 @@ celery_app = Celery(
     "fashion_analyst",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.tasks.ingestion_tasks", "app.tasks.scheduled"],
+    include=["app.tasks.ingestion_tasks", "app.tasks.scheduled", "app.tasks.pattern_tasks"],
 )
 
 # Phase 1 runs the whole ingestion pipeline (crawl -> extract -> verify -> embed -> kg_write) as

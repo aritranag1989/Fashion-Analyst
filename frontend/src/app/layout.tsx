@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { href: "/map", label: "Map" },
   { href: "/trade", label: "Trade" },
   { href: "/timeline", label: "Timeline" },
+  { href: "/patterns", label: "Patterns" },
   { href: "/admin", label: "Admin" },
 ];
 

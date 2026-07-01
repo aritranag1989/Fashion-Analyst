@@ -219,3 +219,84 @@ class EmbeddingMetadata(Base):
     embedding_model: Mapped[str] = mapped_column(String(100))
     embedding_dim: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Swatch(Base):
+    """One physical fabric swatch photo uploaded by a user. hex_color/rgb_* are machine-extracted
+    (see app.pattern_rendering.color_extraction); label/notes are user-editable. This is
+    user-generated design content, not a crawled/verified fact, so it deliberately has no
+    source_id/confidence_score_id - created_at is the right provenance level here."""
+
+    __tablename__ = "swatches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    label: Mapped[str] = mapped_column(String(255))
+    photo_storage_path: Mapped[str] = mapped_column(Text)
+    hex_color: Mapped[str] = mapped_column(String(7))
+    rgb_r: Mapped[int] = mapped_column(Integer)
+    rgb_g: Mapped[int] = mapped_column(Integer)
+    rgb_b: Mapped[int] = mapped_column(Integer)
+    extraction_method: Mapped[str] = mapped_column(String(50), default="pillow_quantize")
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    pattern_swatch_roles: Mapped[list["PatternSwatchRole"]] = relationship(back_populates="swatch")
+
+
+class PatternMockup(Base):
+    """One rendered pattern tile: a pattern_type + ordered swatches + render params. design_source
+    is provenance/UI-filtering metadata only (manual vs. llm_suggested) - both render through the
+    identical deterministic path in app.pattern_rendering, never a behavioral branch."""
+
+    __tablename__ = "pattern_mockups"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pattern_type: Mapped[str] = mapped_column(String(50))
+    render_params: Mapped[dict] = mapped_column(JSONB, default=dict)
+    tile_storage_path: Mapped[str] = mapped_column(Text)
+    tile_width_px: Mapped[int] = mapped_column(Integer)
+    tile_height_px: Mapped[int] = mapped_column(Integer)
+    design_source: Mapped[str] = mapped_column(String(20), default="manual")
+    design_rationale: Mapped[str | None] = mapped_column(Text)
+    batch_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    swatch_roles: Mapped[list["PatternSwatchRole"]] = relationship(back_populates="mockup")
+    concept_shots: Mapped[list["ConceptShot"]] = relationship(back_populates="mockup")
+
+
+class PatternSwatchRole(Base):
+    """Ordered join table: which swatch fills which role/position for a given mockup (e.g. gingham
+    role_index 0="ground", 1="check"; tartan role_index 0..N = ordered sett sequence). A real FK
+    join table (not a JSONB id array) so referential integrity holds if a swatch is edited/deleted,
+    matching the CompanyAssociation/CompanyEvent precedent."""
+
+    __tablename__ = "pattern_swatch_roles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mockup_id: Mapped[int] = mapped_column(ForeignKey("pattern_mockups.id"))
+    swatch_id: Mapped[int] = mapped_column(ForeignKey("swatches.id"))
+    role_index: Mapped[int] = mapped_column(Integer)
+
+    mockup: Mapped["PatternMockup"] = relationship(back_populates="swatch_roles")
+    swatch: Mapped["Swatch"] = relationship(back_populates="pattern_swatch_roles")
+
+
+class ConceptShot(Base):
+    """Opt-in, per-mockup AI photorealistic 'on a garment' image via a swappable image-gen
+    provider (OpenAI gpt-image-1 by default - see app.imagegen.base.ImageGenProvider). Never
+    created automatically - always a deliberate one-at-a-time action given per-image cost."""
+
+    __tablename__ = "concept_shots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mockup_id: Mapped[int] = mapped_column(ForeignKey("pattern_mockups.id"))
+    provider_name: Mapped[str] = mapped_column(String(50))
+    prompt_used: Mapped[str | None] = mapped_column(Text)
+    garment_type: Mapped[str | None] = mapped_column(String(100))
+    image_storage_path: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default="completed")
+    error_message: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    mockup: Mapped["PatternMockup"] = relationship(back_populates="concept_shots")
