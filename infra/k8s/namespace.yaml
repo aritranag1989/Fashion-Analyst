@@ -1,0 +1,9 @@
+# Placeholder Kubernetes manifests for a future cloud deployment - NOT used in Phase 1 (local
+# Docker Compose only, see docker/docker-compose.yml). These are representative starting points,
+# not production-hardened: no resource limits tuning, no HPA, no network policies, no secrets
+# management (they assume a k8s Secret named the same as each service's env vars) have been
+# validated against a real cluster yet.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fashion-analyst
